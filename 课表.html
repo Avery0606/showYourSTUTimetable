@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Excel批量处理</title>
+    <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.js"></script>
+    <script src="https://cdn.bootcss.com/xlsx/0.11.5/xlsx.core.min.js"></script>
+</head>
+<body>
+  <div class="main">
+    <table class="timetable" border="1px" id="mainbox">
+      <tr id="days">
+        <td class="blank" onclick="chooseCourse()" title="载入你的课表"><div><p>E<p></div></td>
+        <td class="day">Sunday</td>
+        <td class="day">Monday</td>
+        <td class="day">Tuesday</td>
+        <td class="day">Wednesday</td>
+        <td class="day">Thursday</td>
+        <td class="day">Friday</td>
+        <td class="day">Saturday</td>
+      </tr>
+      <tr id="1" >
+        <td class="times">1</td>
+      </tr>
+      <tr id="2">
+        <td class="times">2</td>
+      </tr>
+      <tr id="3">
+        <td class="times">3</td>
+      </tr>
+      <tr id="4">
+        <td class="times">4</td>
+      </tr>
+      <tr id="5">
+        <td class="times">5</td>
+      </tr>
+      <tr id="6">
+        <td class="times">6</td>
+      </tr>
+      <tr id="7">
+        <td class="times">7</td>
+      </tr>
+      <tr id="8">
+        <td class="times">8</td>
+      </tr>
+      <tr id="9">
+        <td class="times">9</td>
+      </tr>
+      <tr id="0">
+        <td class="times">0</td>
+      </tr>
+      <tr id="A">
+        <td class="times">A</td>
+      </tr>
+      <tr id="B">
+        <td class="times">B</td>
+      </tr>
+      <tr id="C">
+        <td class="times">C</td>
+      </tr>
+    </table>
+  </div>  
+<input type="file" id="excel-file" style="display: none;">
+
+<script>
+  //选择课表
+  function chooseCourse(){
+    let dom = document.getElementById("excel-file");
+    dom.click();
+  }
+  //读取excel课表源数据 
+  
+  let getFiledom = document.getElementById("excel-file");
+  getFiledom.onchange = (e=>{
+    var files = e.target.files;
+    var fileReader = new FileReader();
+    // 以二进制方式打开文件
+    fileReader.readAsBinaryString(files[0]);
+    fileReader.onload = function(ev) {
+        try {
+            var data = ev.target.result
+            var workbook = XLSX.read(data, {
+                type: 'binary'
+            }) // 以二进制流方式读取得到整份excel表格对象
+            var data = []; // 存储获取到的数据
+        } catch (e) {
+            console.log(e,'文件类型不正确');
+            return;
+        }
+        // 表格的表格范围，可用于判断表头是否数量是否正确
+        var fromTo = '';
+        // 遍历每张表读取
+        for (var sheet in workbook.Sheets) {
+            if (workbook.Sheets.hasOwnProperty(sheet)) {
+                fromTo = workbook.Sheets[sheet]['!ref'];
+                data = data.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]));
+                break;
+            }
+        }
+        //在控制台打印出来表格中的数据
+        for(let i in data){
+          if(data[i].week){
+            data[i].week = formatDate(data[i].week)
+          }
+        }
+        //清空课表
+        deleteAllCourses();
+        //生成课表
+        makeTimetable(data);
+    };
+  })
+
+  //jq方法 需要联网
+  // $('#excel-file').change(function(e) {
+  //   var files = e.target.files;
+  //   var fileReader = new FileReader();
+  //   // 以二进制方式打开文件
+  //   fileReader.readAsBinaryString(files[0]);
+  //   fileReader.onload = function(ev) {
+  //       try {
+  //           var data = ev.target.result
+  //           var workbook = XLSX.read(data, {
+  //               type: 'binary'
+  //           }) // 以二进制流方式读取得到整份excel表格对象
+  //           var data = []; // 存储获取到的数据
+  //       } catch (e) {
+  //           console.log('文件类型不正确');
+  //           return;
+  //       }
+  //       // 表格的表格范围，可用于判断表头是否数量是否正确
+  //       var fromTo = '';
+  //       // 遍历每张表读取
+  //       for (var sheet in workbook.Sheets) {
+  //           if (workbook.Sheets.hasOwnProperty(sheet)) {
+  //               fromTo = workbook.Sheets[sheet]['!ref'];
+  //               data = data.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]));
+  //               break;
+  //           }
+  //       }
+  //       //在控制台打印出来表格中的数据
+  //       for(let i in data){
+  //         if(data[i].week){
+  //           data[i].week = formatDate(data[i].week)
+  //         }
+  //       }
+  //       //清空课表
+  //       deleteAllCourses();
+  //       //生成课表
+  //       makeTimetable(data);
+  //   };
+  // });
+
+  //生成课表
+  function makeTimetable(data) {
+    for(let i in data){
+      //data{monday,id,name,place,point,teacher,week}
+      let time = [{
+        time:"",
+        day:-1,
+      },{
+        time:"",
+        day:-1,
+      }];//当前课的具体上课时间
+      let lenOftime = 0;
+      if(data[i].Sunday){
+        time[lenOftime].time = data[i].Sunday;
+        time[lenOftime].day = 0;
+        lenOftime++;
+      }
+      if(data[i].Monday){
+        time[lenOftime].time = data[i].Monday;
+        time[lenOftime].day = 1;
+        lenOftime++;
+      }
+      if(data[i].Tuesday){
+        time[lenOftime].time = data[i].Tuesday;
+        time[lenOftime].day = 2;
+        lenOftime++;
+      }
+      if(data[i].Wednesday){
+        time[lenOftime].time = data[i].Wednesday;
+        time[lenOftime].day = 3;
+        lenOftime++;
+      }
+      if(data[i].Thursday){
+        time[lenOftime].time = data[i].Thursday;
+        time[lenOftime].day = 4;
+        lenOftime++;
+      }
+      if(data[i].Friday){
+        time[lenOftime].time = data[i].Friday;
+        time[lenOftime].day = 5;
+        lenOftime++;
+      }
+      if(data[i].Saturday){
+        time[lenOftime].time = data[i].Saturday;
+        time[lenOftime].day = 6;
+        lenOftime++;
+      }
+
+      createBlock(data[i].name,data[i].place,time,data[i].id,data[i]);
+    }
+    
+  }
+
+  //处理excel的时间(周)数据
+  function formatDate(numb) {
+    const time = new Date((numb - 1) * 24 * 3600000 + 1)
+    const begin = time.getMonth() + 1 + ''
+    const end = time.getDate() - 1 + ''
+    return {begin,end}
+  }
+
+  //在指定位置生成格子
+  function createBlock(name,place,time,id,data){
+    let handlename = name.replace(/\[[\S]*\]/g,"");
+    let handlecolor = name.match(/([0-9]{3,4})/g);//处理格子的颜色
+    for(let i of time){
+      //time{day,time} 星期“2” 34
+      if(i.day!=-1){
+        //处理上课时间数组长度
+        let strtime = i.time.match(/\w/g);
+        let timetable = document.getElementById("mainbox");
+        
+        let top_start = document.getElementsByClassName("day")[0].offsetHeight;//初始位置
+        let left_start = document.getElementsByClassName("blank")[0].offsetWidth;//初始位置
+        let block_width = document.getElementsByClassName("day")[0].offsetWidth;//块宽度
+        let block_height = strtime.length*document.getElementById("1").offsetHeight;//块高度
+        let top = top_start + (handletime(i.time)-1)*document.getElementById("1").offsetHeight;  
+        let left = left_start + i.day*(block_width+1); 
+        
+        //判断位置上是否已经存在课程 true表示存在
+        let flag1 = ifHasCourse(i.day,strtime)
+        if(flag1){
+          top = top + 10;
+        }
+
+        let block = setBlockStyle(top,left,block_width,block_height,handlecolor[0]);//生成块
+        block.id = `${id}_${i.day}_${strtime}`;//设置块的id
+         
+        let block_coursename = document.createElement('div');
+        block_coursename.className = "course_block_text";
+        block_coursename.innerText = `${handlename}`;
+
+        let block_place = document.createElement('div');
+        block_place.className = "course_block_text";
+        block_place.innerText = `${place}`;
+        block.style.transform = "scale(0.9)";
+        block.appendChild(block_coursename);
+        block.appendChild(block_place);
+
+        //如果是单双周课 增加一个专属背景
+        if(i.time[0] == "单" || i.time[0] == "双"){
+          let special_dom = document.createElement('div');
+          
+          special_dom.style.position = "absolute";
+          special_dom.style.width = `${block_width}px`;
+          special_dom.style.height = `${block_height}px`;
+          special_dom.style.display = "flex";
+          special_dom.style.justifyContent = "center";
+          special_dom.style.alignItems = "center";
+          special_dom.style.zIndex = "-1";
+          special_dom.style.opacity = "0.3";
+          let intext = document.createElement('div');
+          intext.style.fontSize = "50px";
+          intext.innerText = i.time[0];
+          intext.id="danshuang";
+          special_dom.appendChild(intext);
+          block.appendChild(special_dom);
+        }
+
+        
+        
+        let timer1,timer2,timer3;
+        let hovertime = 1000;
+        let leavetime = 500;//离开0.5秒后删除details格子
+        let mouseX,mouseY;//鼠标当前位置
+
+        //注册监听鼠标移动事件 获得鼠标当前位置
+        block.onmousemove = function(e){
+          mouseX = e.pageX;
+          mouseY = e.pageY;
+        }
+
+        //注册鼠标覆盖与离开事件
+        let el = "NULL";
+        block.onmouseenter = function(){
+          // console.log("enter "+id);
+          clearTimeout(timer2);
+          clearTimeout(timer3);
+          block.style.transform = "scale(1)";
+          timer1 = setTimeout(function(){
+            // console.log("enter 2s"); 鼠标覆盖两秒后才触发
+            //在鼠标旁边生成一个detail块 有课程具体信息
+            if(!document.getElementById(`Details${id}`)){
+              let left = mouseX;
+              let top = mouseY;
+              if(mouseX>784){
+                left -=200; 
+              }
+              if(mouseY>363){
+                top -=250;
+              }
+
+              //设置格子样式
+              let details_block = setDetailsStyle(top,left);
+
+              //设置格子内容
+              //data{monday,id,name,place,point,teacher,week}
+              details_block.id = `Details${id}`;
+
+              //课程名
+              let details_name = document.createElement('div');
+              details_name.className = "details_text";
+              details_name.innerText = `课程名称：${name}`;
+              details_block.appendChild(details_name);
+              //上课老师
+              let details_teacher = document.createElement('div');
+              details_teacher.className = "details_text";
+              details_teacher.innerText = `教师：${data.teacher}`;
+              details_block.appendChild(details_teacher);
+              //开课班号
+              let details_id = document.createElement('div');
+              details_id.className = "details_text";
+              details_id.innerText = `班号：${data.id}`;
+              details_block.appendChild(details_id);
+              //上课地点
+              let details_place = document.createElement('div');
+              details_place.className = "details_text";
+              details_place.innerText = `课室：${data.place}`;
+              details_block.appendChild(details_place);
+              //学分
+              let details_point = document.createElement('div');
+              details_point.className = "details_text";
+              details_point.innerText = `学分数：${data.point}`;
+              details_block.appendChild(details_point);
+              //上课时间
+              let details_time = document.createElement('div');
+              details_time.className = "details_text";
+              details_time.innerText = "上课时间：";
+              for(let j of time){
+                if(j.day != -1){
+                  let strtime = numToday(j.day);
+                  details_time.innerText = details_time.innerText + `${strtime} ${j.time} `;
+                }
+              }
+              //上课周
+              let details_week = document.createElement('div');
+              details_week.className = "details_text";
+              details_week.innerText = `起止周：${data.week.begin}-${data.week.end}`;
+              details_block.appendChild(details_week);
+              
+              details_block.appendChild(details_time);
+
+              //details的鼠标进入和离开事件 控制时间关闭该格子
+              details_block.onmouseenter = function(e){
+                details_block.style.borderColor = "rgb(64,158,255)";
+                details_block.style.boxShadow = "0px 0px 3px #000";
+                el = e.target.id;
+                clearTimeout(timer2);
+                clearTimeout(timer3);
+              }
+              details_block.onmouseleave = function(e){
+                details_block.style.borderColor = "rgb(102,177,255)";
+                details_block.style.boxShadow = "none";
+                timer2 = setTimeout(function(){
+                  let dom = document.getElementById(`Details${id}`);
+                  if(dom){
+                    dom.remove();
+                  }
+                },leavetime)
+              }
+
+
+              timetable.appendChild(details_block);
+            }
+            
+          },hovertime)
+        }
+
+        block.onmouseleave = function(){
+          // console.log("leave "+id);
+          block.style.transform = "scale(0.9)";
+          clearTimeout(timer1);
+          //离开0.5秒后删除生成的Details格子
+          timer3 = setTimeout(function(){
+            let dom = document.getElementById(`Details${id}`);
+            if(dom){
+              dom.remove();
+            }
+          },leavetime);
+        }
+
+        //如果位置存在重复元素 则为所有堆叠元素增加点击事件 更换堆叠顺序
+        //一般最多只有两个课程会重叠 单双周情况
+        if(flag1){
+          let list = getCourses(i.day,strtime);
+          let anotherCourse = list[0];
+          let blockDisplay = true;//判断当前哪个元素处于显示位置
+          anotherCourse.onclick = function(){
+            if(blockDisplay){
+              //当前处于底层不显示位置
+              //获得原始top值
+              let old_top = anotherCourse.style.top.match(/\d{0,4}/)[0];
+
+              //向上平移一个块高度
+              let moveY = block_height;
+              let now_top = old_top - moveY;
+              anotherCourse.style.top = `${now_top}px`;
+
+              //另一个堆叠元素向上平移10px
+              let another_top = top - 10;
+              block.style.top = `${another_top}px`;
+
+              //修改堆叠顺序
+              anotherCourse.style.zIndex = "1";
+              block.style.zIndex = "0";
+              blockDisplay = !blockDisplay;
+
+              //向下平移一个块高度 + 10px
+              now_top = now_top + moveY + 10;
+              anotherCourse.style.top = `${now_top}px`;
+            }else{
+              //处在显示 再次点击则使其处于被遮挡位置
+              //获得原始top值
+              let old_top = anotherCourse.style.top.match(/\d{0,4}/)[0];
+
+              //向下平移一个块高度
+              let moveY = block_height;
+              let now_top = old_top*1 + moveY*1;
+              anotherCourse.style.top = `${now_top}px`;
+
+              //另一个堆叠元素平移到当前元素原位置
+              block.style.top = `${old_top}px`;
+
+              //修改堆叠顺序
+              block.style.zIndex = "1";
+              anotherCourse.style.zIndex = "0";
+              blockDisplay = !blockDisplay;
+              
+
+              //向上平移一个块高度 + 10px
+              now_top = now_top - moveY - 10;
+              anotherCourse.style.top = `${now_top}px`;
+            }
+
+          }
+          block.onclick = function(){
+            if(blockDisplay){
+              //处在显示 再次点击则使其处于被遮挡位置
+              //获得原始top值
+              let old_top = block.style.top.match(/\d{0,4}/)[0];
+
+              //向下平移一个块高度
+              let moveY = block_height;
+              let now_top = old_top*1 + moveY*1;
+              block.style.top = `${now_top}px`;
+
+              //另一个堆叠元素平移到当前元素原位置
+              anotherCourse.style.top = `${old_top}px`;
+
+              //修改堆叠顺序
+              anotherCourse.style.zIndex = "1";
+              block.style.zIndex = "0";
+              blockDisplay = !blockDisplay;
+              
+
+              //向上平移一个块高度 + 10px
+              now_top = now_top - moveY - 10;
+              block.style.top = `${now_top}px`;
+            }else if(anotherCourse.style.zIndex == 1){
+              //当前处于底层不显示位置
+              //获得原始top值
+              let old_top = block.style.top.match(/\d{0,4}/)[0];
+
+              //向上平移一个块高度
+              let moveY = block_height;
+              let now_top = old_top - moveY;
+              block.style.top = `${now_top}px`;
+
+              //另一个堆叠元素向上平移10px
+              let another_top = top - 10;
+              anotherCourse.style.top = `${another_top}px`;
+
+              //修改堆叠顺序
+              block.style.zIndex = "1";
+              anotherCourse.style.zIndex = "0";
+              blockDisplay = !blockDisplay;
+
+              //向下平移一个块高度 + 10px
+              now_top = now_top + moveY + 10;
+              block.style.top = `${now_top}px`;
+            }
+          }
+        }
+        
+        timetable.appendChild(block);
+      }
+
+    }
+  }
+
+  //判断指定位置上是否有格子
+  function ifHasCourse(day,time){
+    let Course_list = document.getElementsByClassName('course_block');
+    for(let course of Course_list){
+      let match = course.id.match(/(?<id>\d{0,10})_(?<day>\d)_(?<time>.{0,6})/);
+      if(day == match.groups.day && time == match.groups.time)return true;//存在重复位置的元素
+    }
+  }
+
+  //获得某一位置的所有课程
+  function getCourses(day,time){
+    let Course_list = document.getElementsByClassName('course_block');
+    let list = [];
+    for(let course of Course_list){
+      let match = course.id.match(/(?<id>\d{0,10})_(?<day>\d)_(?<time>.{0,6})/);
+      if(day == match.groups.day && time == match.groups.time){
+        list[list.length] = course;
+      }
+    }
+    return list;
+  }
+
+  //设置块样式
+  function setBlockStyle(top,left,width,height,handlecolor){
+    let block = document.createElement('div');
+    let num = parseInt(handlecolor).toString(16);//转为16进制
+    let lenOfnum = num.length;
+    let strt = num;
+    for(let i = 0;i<(6-lenOfnum);i++)
+    {
+      strt = strt.match(/.{0,7}/g)[0];
+      strt = strt + "F";
+    }
+    num = strt;
+    block.style.position='absolute';
+    block.style.width=`${width}px`;
+    block.style.height=`${height}px`;
+    block.style.top=`${top}px`;
+    block.style.left=`${left}px`;
+    block.style.borderRadius="4px";
+    block.style.backgroundColor=`#${num}`;
+    // block.style.color = oppositeColor("#"+num,-4);
+    block.style.display="flex";
+    block.style.flexDirection="column";
+    block.style.flexWrap="nowrap";
+    block.style.justifyContent="space-around";
+    block.style.cursor="pointer";
+    block.style.transition="all 0.3s";
+    block.style.userSelect="none";
+    block.style.fontWeight="bold";
+    block.style.textAlign = "center";
+    block.style.zIndex = "0";
+    block.className = "course_block";
+    return block;
+  }
+
+  //设置details块样式
+  function setDetailsStyle(top,left){
+    let block = document.createElement('div');
+    block.style.position="absolute";
+    block.style.top=`${top}px`;
+    block.style.left=`${left}px`;
+    block.style.width = "200px";
+    block.style.height = "250px";
+    block.style.backgroundColor = "white";
+    block.style.display = "flex";
+    block.style.flexDirection = "column";
+    block.style.flexWrap = "nowrap";
+    block.style.justifyContent = "space-around";
+    block.style.alignItems = "left";
+    block.style.cursor = "default";
+    block.style.border = "2px solid";
+    block.style.borderRadius = "5px";
+    block.style.borderColor = "rgb(102,177,255)";
+    block.style.transition = "all 0.3s"
+    block.style.fontFamily = "Arial, Helvetica, sans-serif";
+    block.style.fontWeight = "bold";
+    block.style.padding = "2px";
+    block.style.zIndex = "2";
+    return block;
+  }
+
+  //输入数字返回星期几
+  function numToday(num){
+    let dayEnglish = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+    let dayChinese1 = ["周一","周二","周三","周四","周五","周六","周日"];
+    let dayChinese2 = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"];
+    if(num>0 && num<8){
+      return dayChinese1[num-1];
+    }
+  }
+
+  //计算文字与背景反色
+  function oppositeColor(a, ilighten){
+    a = a.replace('#', '');
+    //var max16 = 15;
+    var max16 = Math.floor(15 + (ilighten || 0));
+    if (max16 < 0 || max16 > 15) max16 = 15;
+    
+    var c16, c10, b = [];
+
+    for (var i = 0; i < a.length; i++) {
+        c16 = parseInt(a.charAt(i), 16);    // to 16进制
+        c10 = parseInt(max16 - c16, 10);    // 10进制计算
+        if (c10 < 0) c10 = Math.abs(c10); 
+        b.push(c10.toString(16));           // to 16进制
+    }
+    return '#' + b.join('');
+  }
+
+  //处理上课开始时间
+  function handletime(time) {
+    if(time[0] == 1 ||time[0] == 2 ||time[0] == 3 ||time[0] == 4 ||time[0] == 5 ||time[0] == 6 ||time[0] == 7 ||time[0] == 8 ||time[0] == 9 )
+      return time[0];
+    if(time[0] == 0)return 10;
+    if(time[0] == 'A')return 11;
+    if(time[0] == 'B')return 12;
+    if(time[0] == 'C')return 13;
+    if(time[0] == '双'||time[0] == '单')return handletime(time[1]);
+  }
+
+  //清空课表
+  function deleteAllCourses(){
+    let Course_list = document.getElementsByClassName('course_block');
+    let temp = [];
+    for(let i = 0;i<Course_list.length;i++){
+      temp[temp.length] = Course_list[i];
+    }
+    for(let i in temp){
+      let dom = temp[i];
+      temp[i] = "hello";
+      dom.remove();
+    }
+  }
+</script>
+</body>
+<style>
+  body{
+    width: 1200px;
+    background-color: rgb(242, 245, 245);
+  }
+  .timetable{
+    border-spacing: 0;
+    position: relative;
+    border:none;
+  }
+  .timetable #days .blank{
+    width:50px;
+    border:none;
+    cursor: pointer;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+
+  }
+  .timetable #days .blank div{
+    border:1px solid rgb(220,223,230);
+    text-align: center;
+    vertical-align: middle;
+    height:50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 5px;
+  }
+  .timetable #days .blank div:hover{
+    background-color: rgb(236, 245, 255);
+    color:rgb(64,158,255);
+  }
+  .timetable #days .day{
+    user-select: none;
+    width:130px;
+    height:60px;
+    text-align: center;
+    cursor: default;
+    background-color: rgb(64,158,255);
+    border-radius: 10px;
+    border:5px solid white;
+    font-weight: bold;
+    font-family:Arial, Helvetica, sans-serif;
+    color: white;
+    transition:all 0.3s;
+  }
+  .timetable #days .day:hover{
+    transform: scale(1.1);
+  }
+  .timetable .times{
+    text-align: center;
+    user-select: none;  
+    height:40px;
+    cursor: default;
+    border: 1px solid white;
+    background-color: rgb(103, 194, 58);
+    color:white;
+    border-radius: 5px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+  }
+  .timetable .times:hover{
+    background-color: rgb(133, 206, 97);
+    
+  }
+  .course_block_text{
+    color:white;
+  }
+  .course_block_text:hover{
+    color:rgb(64,158,255);
+  }
+  .details_text{
+    cursor: pointer;
+  }
+  .details_text:hover{
+    color:rgb(64,158,255);
+  }
+</style>
+</html>
